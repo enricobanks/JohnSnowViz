@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>1854 John Snow Cholera Map</title>
+	<link type="text/css" rel="stylesheet" href="cholera.css"/>
+	<script type="text/javascript" src="https://d3js.org/d3.v3.min.js"></script>
+	<style>
+		svg .street {
+			stroke: gray;
+			stroke-width: .5px;
+			fill: none;
+		}
+		
+		svg .mapLabel {
+			font-family: 'helvetica';
+			fill: gray;
+            
+		}
+		
+		svg .pump {
+			fill: #0099cc;
+			stroke: none;
+		}
+		
+		svg .death {
+			stroke: none;
+			r: 2;
+		}
+		
+		svg .graphline {
+			fill: none;
+			stroke-width: 1px;
+		}
+		
+		svg .deathhoverbar:hover {
+			fill-opacity: .4;
+		}
+		
+		svg .graphbutton {
+			rx: 5;
+			ry: 5;
+			stroke: none;
+		}
+		
+		svg .graphbuttonlabel {
+			font-family: 'helvetica';
+			font-size: 14px;
+		}
+		
+		.axis path,
+		.axis line {
+			fill: none;
+			stroke: gray;
+			shape-rendering: crispEdges;
+		}
+		.axis text {
+			font-family: helvetica;
+			font-size: 10px;
+			fill: gray;
+		}
+        
+    .caption {
+            fill: black;
+        }
+        
+        .work {
+            fill: black;
+            font-size: 25px;
+        }
+        
+        .work2 {
+            fill: white;
+            font-size: 15px;
+        }
+        .work3 {
+            fill: white;
+            font-size: 10px;
+        }
+       
+        ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #333;
+}
+
+li {
+  float: left;
+}
+
+li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+/* Change the link color to #111 (black) on hover */
+li a:hover {
+  background-color: #111;
+}
+
+       
+		
+	</style>
+</head>
+<body>
+    
+    <ul>
+  <li><a class="active" href="index.html">Home</a></li>
+  <li><a href="JohnSnowProject.pdf" target >Documentation</a></li>
+  <li><a href="video.html">Video</a></li>
+</ul>
+    
+    
+    
+<!--
+    <div class='container'>
+	<div class='row'>
+-->
+					
+<!--
+			<svg class='chart'>
+			</svg>
+-->
+<!--	</div>-->
+<!--</div>-->
+    
+    
+    
+	<div>
+<!--
+		<div class="pagetitle" style="float: left;">Cholera Outbreak: London, 1854</div>
+		<div style="float: right;">
+			<form>
+				<input class="pagebutton" type="button" value="About"
+				onclick="window.location.href='about.html'" />
+			</form>
+		</div>
+		<br/><br/>
+		<div class="pagetext">
+			<p>
+			In 1854, an outbreak of cholera in the Soho district of London killed 616 people. Physician John Snow theorized that the disease was related to contaminated water. He created a map that showed where the deaths occurred in relation to water pumps in the area (the black diamonds), and showed they were strongly correlated with a water pump on Broad Street. This data visualization is inspired by his work. <a href="https://youtu.be/_QCHMj1vbjE">Click here to see a video demonstration of the visualization.</a>
+			</p>
+		</div>
+-->
+		<svg id="map" width="40%" viewBox="0 0 500 550">
+            <text id='label' x='160' y='35'>John Snow Cholera Map</text>
+            <text class='caption' x='255' y='250' transform="translate(-80,105)rotate(-20)">Broad St</text>
+            <text id='label2' x='255' y='250' transform="translate(-30,265)rotate(-30)">Brewer St</text>
+            <rect x="0" y="0" width="30" height="30" fill="#969696" transform="translate(205,175)rotate(-25)" />
+            <rect x="0" y="0" width="15" height="15" fill="#969696" transform="translate(308,230)rotate(-25)" />
+            
+            <text class='work2' x='220' y='188'>1</text>
+            <text class='work3' x='315' y='238'>2</text>
+            
+            <text id='label' x='170' y='515'>Brewery</text>
+            <rect x="150" y="502" width="15" height="15" fill="#969696"/>
+            <text class='work2' x='154' y='515'>2</text>
+            
+            <text id='label' x='50' y='515'>Work House</text>
+            <rect x="30" y="502" width="15" height="15" fill="#969696" />
+            <text class='work2' x='34' y='515'>1</text>
+            
+            <text id='label' x='260' y='515'>Water Pumps</text>
+            <rect x="240" y="502" width="15" height="15" fill="#0099cc"/>
+            <text class='work2' x='154' y='515'>2</text>
+            
+		</svg>
+		<svg id="graph" width="40%" viewBox="0 0 560 500">
+			<text class='work' x='30' y='20' >Cholera Deaths</text>
+            
+20)		</svg>
+	</div>
+
+	
+	<script type="text/javascript">
+		const SIZE = 500;
+		let padding = 30;
+	
+		let map = d3.select("svg#map");
+		let mapWidth = SIZE;
+		let mapHeight = SIZE;
+		let mapXScale = d3.scale.linear();
+		let mapYScale = d3.scale.linear();
+		
+		let buttonHeight = 30;
+		let buttonPadding = 10;
+		
+		let graph = d3.select("svg#graph");
+		let graphWidth = SIZE;
+		let graphHeight = SIZE - 
+			(buttonHeight + buttonPadding * 2);
+		let graphXScale = d3.scale.linear();
+		let graphYScale = d3.scale.linear();
+		
+		let buttonWidth = (graphWidth - 4 * buttonPadding) / 3;
+		let keyButtonWidth = buttonWidth / 2;
+	
+		let maleOpacity = 1;
+		let famaleOpacity = 1;
+		
+		let ageRanges = [
+			{
+				label: '0-10',
+				opacity: 1,
+				color: '#fee399'
+			},
+			{
+				label: '11-20',
+				opacity: 1,
+				color: '#fec44f'
+			},
+			{
+				label: '21-40',
+				opacity: 1,
+				color: '#fe9929'
+			},
+			{
+				label: '41-60',
+				opacity: 1,
+				color: '#d95f0e'
+			},
+			{
+				label: '61-80',
+				opacity: 1,
+				color: '#993404'
+			},
+			{
+				label: '> 80',
+				opacity: 1,
+				color: 'black'
+			}
+		];
+		
+        
+
+        
+
+    
+        
+		let streets = [];
+		let mapLabels = [];
+		let pumps = [];
+		
+		let deathDays = [];
+		let deaths = [];
+		let maxDeaths = 0;
+		
+		function resetElements() {
+			map.selectAll('.death')
+				.attr('fill','none')
+				.attr('fill-opacity', 1);
+				
+			graph.selectAll('.graphline')
+				.attr('stroke','none')
+				.attr('stroke-opacity',1);
+				
+			graph.selectAll('.graphkeybutton')
+				.attr('visibility','hidden')
+				.attr('fill-opacity', 1);
+				
+			maleOpacity = 1;
+			femaleOpacity = 1;
+			
+			for (let i=0; i < ageRanges.length; i++) {
+				ageRanges[i].opacity = 1;
+			}
+		}
+		
+		function displayTotal() {
+			resetElements();
+			
+			map.selectAll('.death').attr('fill','red');
+				
+			graph.select('#graphlinetotal')
+				.attr('stroke','red')
+				.attr('opacity','1');
+		}
+		
+		function displayGender() {
+			resetElements();
+			
+			map.selectAll('.male').attr('fill','#00008b');
+			map.selectAll('.female').attr('fill','orange');
+			
+			graph.select('#graphlinegendermale').attr('stroke','#00008b');
+			graph.select('#graphlinegenderfemale').attr('stroke','orange');
+			
+			graph.select('#buttongendermale').attr('visibility','visible');
+			graph.select('#buttongendermalelabel').attr('visibility','visible');
+			graph.select('#buttongenderfemale').attr('visibility','visible');
+			graph.select('#buttongenderfemalelabel').attr('visibility','visible');
+		}
+		
+		function displayAge() {
+			resetElements();
+			
+			for (let i=0; i < ageRanges.length; i++) {
+				map.selectAll('.age' + i)
+					.attr('fill', ageRanges[i].color);
+				graph.select('#graphlineage' + i)
+					.attr('stroke', ageRanges[i].color);
+				graph.select('#buttonage' + i)
+					.attr('visibility','visible');
+				graph.select('#buttonagelabel' + i)
+					.attr('visibility','visible');
+			}
+		}
+		
+		// Draw the location of each death on the map.
+		function drawDeathsMap() {
+			map.selectAll('.death')
+				.data(deaths)
+				.enter()
+				.append('circle')
+				.attr('id', function(d,i) { return "death" + i; })
+				.attr('class', function(d) {
+					return "death " +
+						d.gender + " " +
+						"age" + d.age + " " +
+						"deathday" + d.deathday;
+				})
+				.attr('cx', function(d) { return mapXScale(d.x); })
+				.attr('cy', function(d) { return mapYScale(d.y); })
+				.attr('fill','none')
+				.append("title")
+				.text(function(d) {
+					return d.gender + "\r\n" +
+						"age " + ageRanges[d.age].label + "\r\n" +
+						"died " + d.deathdate;
+				});
+		}
+		
+		// Draw all the graph lines in advance.
+		function drawDeathsGraphLines() {
+			let graphTotalPathGenerator = d3.svg.line()
+				.x(function(d) { return graphXScale(d.day); })
+				.y(function(d) { return graphYScale(d.total); });
+			graph.append('path')
+				.attr('id', 'graphlinetotal')
+				.attr('class', 'graphline')
+				.attr('d', graphTotalPathGenerator(deathDays));
+				
+			let graphMalePathGenerator = d3.svg.line()
+				.x(function(d) { return graphXScale(d.day); })
+				.y(function(d) { return graphYScale(d.male); });
+			graph.append('path')
+				.attr('id', 'graphlinegendermale')
+				.attr('class', 'graphline male')
+				.attr('d', graphMalePathGenerator(deathDays));
+			let graphFemalePathGenerator = d3.svg.line()
+				.x(function(d) { return graphXScale(d.day); })
+				.y(function(d) { return graphYScale(d.female); });
+			graph.append('path')
+				.attr('id', 'graphlinegenderfemale')
+				.attr('class', 'graphline female')
+				.attr('d', graphFemalePathGenerator(deathDays));
+			for (let i=0; i < ageRanges.length; i++) {
+				let graphPathGenerator = d3.svg.line()
+					.x(function(d) { return graphXScale(d.day); })
+					.y(function(d) { return graphYScale(d.age[i]); });
+				graph.append('path')
+					.attr('id', 'graphlineage' + i)
+					.attr('class', 'graphline age' + i)
+					.attr('d', graphPathGenerator(deathDays));
+			}
+		}
+		
+		// Draw the overall structure of the graph.
+		function drawDeathsGraph() {
+			// Create hover bars
+			let hoverbarWidth = graphWidth / (deathDays.length - 1);
+			graph.selectAll("rect.deathhoverbar")
+				.data(deathDays)
+				.enter()
+				.append("rect")
+				.attr("x", function(d, i) {
+					return graphXScale(i) - hoverbarWidth / 2;
+				})
+				.attr("y", padding)
+				.attr('width', hoverbarWidth)
+				.attr("height", graphHeight - padding * 2)
+				.attr("fill", "#faeb7d")
+				.attr("fill-opacity", "0")
+				.attr("stroke", "none")
+				.attr("stroke-width", "0")
+				.attr("id", function(d) { return d.deathdate; })
+				.attr("class", "deathhoverbar")
+				.on("mouseover", function(d) {
+					d3.selectAll('.death')
+						.filter(function(d2) {
+							return d2.deathday > d.day;
+						})
+						.attr('visibility','hidden');
+				})
+				.on("mouseout", function(d) {
+					map.selectAll(".death").attr("visibility","visible");
+				})
+				.append("title")
+				.text(function(d) {
+					return d.deathdate + ": " + d.total + 
+						(d.total==1 ? " death" : " deaths");
+				});
+				
+			// Draw the axes.
+			let xAxis = d3.svg.axis()
+				.scale(graphXScale)
+				.orient('bottom')
+				.tickFormat(function(d) {
+					return deathDays[d].deathdate;
+				});
+			let yAxis = d3.svg.axis()
+				.scale(graphYScale)
+				.orient('left');
+			graph.append('g')
+				.attr('class', 'axis')
+				.attr('transform', 'translate(0,' + (graphHeight - padding) + ')')
+				.call(xAxis);
+			graph.append('g')
+				.attr('class', 'axis')
+				.attr('transform', 'translate(' + padding + ',0)')
+				.call(yAxis);
+				
+			// Draw the buttons.
+			let buttonLabelYAdjust = 5;
+			
+			// Total Deaths
+			graph.append('rect')
+				.attr('id', 'buttontotal')
+				.attr('class', 'graphbutton')
+				.attr("x", 290)
+				.attr("y", 0)
+				.attr("width", 50)
+				.attr("height", 18)
+				.attr("fill", "#f0f0f0")
+				.on('click', function(d) {
+					displayTotal();
+				});
+			graph.append('text')
+				.attr('id', 'buttontotallabel')
+				.attr('class', 'graphbuttonlabel')
+				.text('Total')
+				.attr('x',315)
+				.attr('y', 13)
+				.attr('text-anchor','middle')
+				.attr('fill', 'black')
+                .attr("font-size", "12px")
+				.style('pointer-events','none')
+                ;
+				
+			// By Gender
+			graph.append('rect')
+				.attr('id', 'buttongender')
+				.attr('class', 'graphbutton')
+				.attr("x", 345)
+				.attr("y", 0)
+				.attr("width", 55)
+				.attr("height", 18)
+				.attr("fill", "#f0f0f0")
+				.on('click', function(d) {
+					displayGender();
+				});
+			graph.append('text')
+				.attr('id', 'buttongenderlabel')
+				.attr('class', 'graphbuttonlabel')
+				.text('Gender')
+				.attr('x', 372)
+				.attr('y', 13)
+				.attr('text-anchor','middle')
+				.attr('fill', 'black')
+				.style('pointer-events','none');
+				
+			// By Age
+			graph.append('rect')
+				.attr('id', 'buttonage')
+				.attr('class', 'graphbutton')
+				.attr("x", 405)
+				.attr("y", 0)
+				.attr("width", 50)
+				.attr("height", 18)
+				.attr("fill", "#f0f0f0")
+				.on('click', function(d) {
+					displayAge();
+				});
+			graph.append('text')
+				.attr('id', 'buttonagelabel')
+				.attr('class', 'graphbuttonlabel')
+				.text('Age')
+				.attr('x', 430)
+				.attr('y', 13)
+				.attr('text-anchor','middle')
+				.attr('fill', 'black')
+				.style('pointer-events','none');
+				
+			// By Gender: Male Key
+			graph.append('rect')
+				.attr('id', 'buttongendermale')
+				.attr('class', 'graphbutton graphkeybutton male')
+				.attr("x", 366)
+				.attr("y", 257)
+				.attr("width", 20)
+				.attr("height", 20)
+				.attr("fill", "#00008b")
+				.on('click', function(d) {
+					maleOpacity = (maleOpacity == 1 ? .2 : 1);
+					d3.selectAll('.male').attr('fill-opacity', maleOpacity);
+					d3.selectAll('.male').attr('stroke-opacity', maleOpacity);
+				});
+			graph.append('text')
+				.attr('id', 'buttongendermalelabel')
+				.attr('class', 'graphbuttonlabel graphkeybutton')
+				.text('Male')
+				.attr('x', 404)
+				.attr('y', 272)
+				.attr('text-anchor','middle')
+				.attr('fill', '#00008b')
+				.style('pointer-events','none');
+				
+			// By Gender: Female Key
+			graph.append('rect')
+				.attr('id', 'buttongenderfemale')
+				.attr('class', 'graphbutton graphkeybutton female')
+				.attr("x", 366)
+				.attr("y", 292)
+				.attr("width", 20)
+				.attr("height", 20)
+				.attr("fill", "orange")
+				.on('click', function(d) {
+					femaleOpacity = (femaleOpacity == 1 ? .2 : 1);
+					d3.selectAll('.female').attr('fill-opacity', femaleOpacity);
+					d3.selectAll('.female').attr('stroke-opacity', femaleOpacity);
+				});
+			graph.append('text')
+				.attr('id', 'buttongenderfemalelabel')
+				.attr('class', 'graphbuttonlabel graphkeybutton')
+				.text('Female')
+				.attr('x',413)
+				.attr('y', 308)
+				.attr('text-anchor','middle')
+				.attr('fill', 'orange')
+				.style('pointer-events','none');
+            
+			// By Age Key Buttons
+			for (let i=0; i < ageRanges.length; i++) {
+				graph.append('rect')
+					.attr('id', 'buttonage' + i)
+					.attr('class', 'graphbutton graphkeybutton age' + i)
+					.attr("x", 405)
+					.attr("y", buttonPadding * (i + 18) + buttonHeight * i)
+					.attr("width", 20)
+					.attr("height", 20)
+					.attr("fill", ageRanges[i].color)
+                    .attr("position", "relative")
+					.on('click', function(d) {
+						ageRanges[i].opacity = (ageRanges[i].opacity == 1 ? .1 : 1);
+						d3.selectAll('.age' + i)
+							.attr('fill-opacity', ageRanges[i].opacity);
+						d3.selectAll('.age' + i)
+							.attr('stroke-opacity', ageRanges[i].opacity);
+					});
+				graph.append('text')
+					.attr('id', 'buttonagelabel' + i)
+					.attr('class', 'graphbuttonlabel graphkeybutton')
+					.text(ageRanges[i].label)
+					.attr('x', graphWidth - (keyButtonWidth / 2 + buttonPadding))
+					.attr('y', buttonPadding * (i + 17.6) +
+						buttonHeight * i + buttonHeight / 2 +
+						buttonLabelYAdjust)
+					.attr('text-anchor','middle')
+					.attr('fill', 'black')
+					.style('pointer-events','none');
+			}
+		}		
+		
+		// Load the death data and add it to the map and the graph.
+		function loadDeaths() {
+		
+			// Load the coordinates and demographics for each death. These are
+			// assumed to be provided in the order in which the victim died, for
+			// purposes of correlating to deathdays.csv.
+			d3.csv("deaths_age_sex.csv", function(data) {
+				for (let i=0; i < data.length; i++) {
+					deaths.push(
+						{
+							x: data[i].x,
+							y: data[i].y,
+							age: +data[i].age,
+							gender: +data[i].gender==1 ? "female" : "male"
+						}
+					);
+				}
+				
+				// Load the number of deaths for each date, and update
+				// each death record with the day and date on which it occurred.
+				d3.csv("deathdays.csv", function(data) {
+					let deathId = 0;
+					for (let day = 0; day < data.length; day++) {
+					
+						let totalCount = +data[day].deaths;
+						let maleCount = 0;
+						let femaleCount = 0;
+						let ageCount = [0,0,0,0,0,0];
+						
+						// Find the highest number of deaths on any day,
+						// to set the vertical scale.
+						if (maxDeaths < totalCount) {
+							maxDeaths = totalCount;
+						}
+						
+						for (let i=0; i < totalCount; i++) {
+							// Update the individual death records with the day
+							// and date of death.
+							deaths[deathId].deathday = day;
+							deaths[deathId].deathdate = data[day].date;
+							
+							// Count the deaths on each deathDay by demographic.
+							if (deaths[deathId].gender == "male") {
+								maleCount++;
+							} else {
+								femaleCount++;
+							}
+							ageCount[deaths[deathId].age]++;
+							
+							// Increment to the next individual death record.
+							deathId++;
+						}
+						
+						deathDays.push ({
+							day: day,
+							deathdate: data[day].date,
+							total: totalCount,
+							male: maleCount,
+							female: femaleCount,
+							age: ageCount
+						});
+						
+					}
+					graphXScale.domain([0, deathDays.length-1])
+						.range([padding, graphWidth - padding]);
+					graphYScale.domain([0, maxDeaths])
+						.range([graphHeight - padding, padding]);
+						
+					drawDeathsMap();
+					drawDeathsGraphLines();
+					drawDeathsGraph();
+					
+					displayTotal();
+				});
+				
+			});
+		}
+		// Load and draw the water pumps.
+		function drawPumps() {
+			const pumpSize = 8;
+		
+			d3.csv("pumps.csv", function(data) {
+				for (let i=0; i < data.length; i++) {
+					pumps.push(
+						{x: data[i].x, y: data[i].y}
+					);
+				}
+				
+				map.selectAll('.pump')
+					.data(pumps)
+					.enter()
+					.append('rect')
+					.attr('class', 'pump')
+					.attr('width', pumpSize)
+					.attr('height', pumpSize)
+					.attr('x', function(d) { return mapXScale(d.x) - pumpSize / 2; })
+					.attr('y', function(d) { return mapYScale(d.y) - pumpSize / 2; })
+					.attr('transform', function(d) {
+						return 'rotate(45 ' + 
+							mapXScale(d.x) + ' ' +
+							mapYScale(d.y) + ')';
+					});
+			});
+		}
+		
+		// Load and draw the street and building labels.
+		function drawMapLabels() {
+			d3.csv("maplabels.csv", function(data) {
+				for (let i=0; i < data.length; i++) {
+					mapLabels.push({
+						x: data[i].x,
+						y: data[i].y,
+						text: data[i].text,
+						fontsize: data[i].fontsize,
+						angle: data[i].angle
+					});
+				}
+				
+				map.selectAll('.mapLabel')
+					.data(mapLabels)
+					.enter()
+					.append('text')
+					.attr('class', 'mapLabel')
+					.attr('x', function(d) { return d.x; })
+					.attr('y', function(d) { return d.y; })
+					.attr('font-size', function(d) { return d.fontsize; })
+					.text(function(d) { return d.text; })
+					.attr('transform', function(d) {
+						return 'rotate(' + d.angle + ',' +
+							d.x + ',' + d.y + ')';
+					});
+					
+				/*
+				// We used this code to estimate coordinates
+				// for all the labels.
+				map.on("click", function() {
+					console.dir(event.clientX + ", " + event.clientY);
+				});
+				*/
+			});
+		}
+
+		
+		
+		// Provide a means of drawing the map lines at scale.
+		let lineFunction = d3.svg.line()
+			.x(function(d) { return mapXScale(d.x); })
+			.y(function(d) { return mapYScale(d.y); })
+			.interpolate("linear");
+		
+		// Start the process by loading and drawing the map.
+		d3.json("streets.json", function(data) {
+			streets = data;
+		
+			mapXScale.domain([3,20]).range([0, mapWidth]);
+			mapYScale.domain([3,20]).range([mapHeight, 0]);
+			
+			for (let i=0; i < streets.length; i++) {
+				map.append("path")
+					.attr("d", lineFunction(streets[i]))
+					.attr("class", "street");
+			}
+			
+			drawMapLabels();
+			drawPumps();
+			loadDeaths();
+		});
+				
+	</script>
+</body>
+
+
+</html>
+
+
+
